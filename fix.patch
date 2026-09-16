@@ -1,0 +1,32 @@
+diff --git a/src/supervision/detection/line_zone.py b/src/supervision/detection/line_zone.py
+index 70102d1..75fdaf3 100644
+--- a/src/supervision/detection/line_zone.py
++++ b/src/supervision/detection/line_zone.py
+@@ -159,6 +159,12 @@ class LineZone:
+                 detections have crossed the line from outside to inside. The second
+                 array indicates which detections have crossed the line from inside to
+                 outside.
++
++        Note:
++            `trigger()` expects confirmed tracks. Detections whose `tracker_id`
++            is `None` or negative (e.g. `-1` for unconfirmed tracks from
++            `roboflow/trackers`) are ignored: they carry no stable identity,
++            so counting them would collapse many objects into one phantom track.
+         """
+         crossed_in = np.full(len(detections), False)
+         crossed_out = np.full(len(detections), False)
+@@ -192,6 +198,14 @@ class LineZone:
+         for i, (class_id, tracker_id) in enumerate(
+             zip(class_ids, detections.tracker_id)
+         ):
++            if tracker_id is None or int(tracker_id) < 0:
++                # Unconfirmed track (roboflow/trackers reports -1 until
++                # minimum_consecutive_frames). Skip it: without a stable
++                # identity it must not take part in crossing counts, and
++                # must never share one phantom track with other unconfirmed
++                # detections. See roboflow/supervision#2578.
++                continue
++
+             if not in_limits[i]:
+                 continue
+ 
